@@ -1,0 +1,170 @@
+@import "tailwindcss";
+
+@theme {
+  --color-sea: #0b2233;
+  --color-deep: #143349;
+  --color-swell: #24506b;
+  --color-foam: #eaf3f1;
+  --color-hit: #3fb58b;
+  --color-near: #e3b04b;
+  --color-rope: #c9a15a;
+  --color-mist: #bcd3d0;
+  --color-faint: #6f8fa3;
+
+  --font-sans: "DM Sans", system-ui, sans-serif;
+  --font-display: "Young Serif", Georgia, serif;
+
+  --animate-pop: pop 0.1s;
+  --animate-shake: shake 0.5s;
+  --animate-drop: drop 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  --animate-lift: lift 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) 0.45s both;
+
+  @keyframes pop {
+    from {
+      transform: scale(0.9);
+    }
+    50% {
+      transform: scale(1.1);
+    }
+    to {
+      transform: scale(1);
+    }
+  }
+  @keyframes shake {
+    10%,
+    90% {
+      transform: translateX(-1px);
+    }
+    20%,
+    80% {
+      transform: translateX(2px);
+    }
+    30%,
+    50%,
+    70% {
+      transform: translateX(-4px);
+    }
+    40%,
+    60% {
+      transform: translateX(4px);
+    }
+  }
+  @keyframes drop {
+    from {
+      opacity: 0;
+      transform: translateY(-12px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes lift {
+    from {
+      opacity: 0;
+      transform: translateY(24px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}
+
+/* responsive variants used by the layout (later ones win) */
+@custom-variant short (@media (max-height: 740px));
+@custom-variant tiny (@media (max-width: 340px));
+@custom-variant tall (@media (min-width: 768px) and (min-height: 820px));
+/* land: phones on their side (ladder left, keyboard right) */
+@custom-variant land (@media (orientation: landscape) and (max-height: 520px));
+/* desk: wide desktop windows only, for bigger tiles and type */
+@custom-variant desk (@media (min-width: 900px) and (min-height: 521px));
+
+@layer base {
+  button:focus-visible {
+    outline: 3px solid var(--color-near);
+    outline-offset: 2px;
+  }
+}
+
+/* Staggered ladder entrance. Defined outside @theme so the keyframes are always emitted.
+   Only active while the .ladder-intro class is present. */
+@keyframes rung {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .ladder-intro > * {
+    animation: rung 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  .ladder-intro > :nth-child(1) {
+    animation-delay: 0.1s;
+  }
+  .ladder-intro > :nth-child(2) {
+    animation-delay: 0.18s;
+  }
+  .ladder-intro > :nth-child(3) {
+    animation-delay: 0.26s;
+  }
+  .ladder-intro > :nth-child(4) {
+    animation-delay: 0.34s;
+  }
+  .ladder-intro > :nth-child(5) {
+    animation-delay: 0.42s;
+  }
+  .ladder-intro > :nth-child(6) {
+    animation-delay: 0.5s;
+  }
+  .ladder-intro > :nth-child(7) {
+    animation-delay: 0.58s;
+  }
+  .ladder-intro > :nth-child(n + 8) {
+    animation-delay: 0.66s;
+  }
+}
+
+/* Lets the ladder tiles resize smoothly when the keyboard is toggled: --chrome (the space reserved
+   around the ladder) is a typed length, so it can be transitioned, and the tile size derives from it. */
+@property --chrome {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 430px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .chrome-anim {
+    transition: --chrome 0.3s ease-out;
+  }
+}
+
+/* "Niñafy": the pink theme just swaps the palette variables */
+:root[data-theme="pink"] {
+  --color-sea: #2a0f21;
+  --color-deep: #44183a;
+  --color-swell: #6b2a58;
+  --color-foam: #fdeef5;
+  --color-hit: #ff5fa2;
+  --color-near: #ffd1e3;
+  --color-rope: #f2a6c8;
+  --color-mist: #e8b9d0;
+  --color-faint: #b9779c;
+}
+
+/* short colour fade while switching themes */
+@media (prefers-reduced-motion: no-preference) {
+  .theme-fade,
+  .theme-fade * {
+    transition:
+      background-color 0.35s,
+      border-color 0.35s,
+      color 0.35s,
+      translate 0.2s !important;
+  }
+}
