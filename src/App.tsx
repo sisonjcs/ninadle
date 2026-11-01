@@ -289,9 +289,10 @@ export default function App() {
   const [start, setStart] = useState(() => pickStart());
   const [ladder, setLadder] = useState<string[]>([]);
   const [input, setInput] = useState("");
-  const [msg, setMsg] = useState("");
+  const [, setMsg] = useState(""); // validation text is set but not displayed anywhere yet
   const [shake, setShake] = useState(false);
-  const [open, setOpen] = useState(false); // result pop-up
+  const [ready, setReady] = useState(false); // delay after the game ends has passed
+  const [dismissed, setDismissed] = useState(false); // result pop-up closed by the player
   const [round, setRound] = useState(0); // bumps each new game so animated sections remount
   const [intro, setIntro] = useState(true); // true while the entrance animation plays
   const [pink, setPink] = useState(() => {
@@ -350,18 +351,17 @@ export default function App() {
   }, [showKeys]);
 
   // show the result pop-up shortly after the game ends (lets the final rung and confetti land first)
+  const open = !playing && ready && !dismissed;
   useEffect(() => {
-    if (playing) {
-      setOpen(false);
-      return;
-    }
-    const t = setTimeout(() => setOpen(true), 250);
+    if (playing) return;
+    const t = setTimeout(() => setReady(true), 250);
     return () => clearTimeout(t);
   }, [playing]);
 
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    const onKey = (e: KeyboardEvent) =>
+      e.key === "Escape" && setDismissed(true);
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
@@ -423,7 +423,8 @@ export default function App() {
 
   const playAgain = () => {
     setStart(pickStart(start));
-    setOpen(false);
+    setReady(false);
+    setDismissed(false);
     setLadder([]);
     setInput("");
     setMsg("");
@@ -448,7 +449,7 @@ export default function App() {
         onMouseDown={(e) => e.preventDefault()}
         className="fixed top-[max(12px,env(safe-area-inset-top))] right-[max(12px,env(safe-area-inset-right))] z-20 flex min-h-9 cursor-pointer touch-manipulation items-center gap-2.5 rounded-full border border-swell py-1 pr-1.5 pl-3.5 text-[0.85rem] font-bold text-mist transition-colors hover:bg-deep hover:text-foam motion-safe:animate-drop"
       >
-        Niñafy✨
+        Niñafy
         <span
           aria-hidden
           className={`flex h-6 w-10 items-center rounded-full p-1 transition-colors ${pink ? "bg-rope" : "bg-swell"}`}
@@ -462,7 +463,7 @@ export default function App() {
       {open && (
         <div
           className="fixed inset-0 z-30 grid place-items-center bg-sea/80 p-4"
-          onClick={() => setOpen(false)}
+          onClick={() => setDismissed(true)}
         >
           <div
             role="dialog"
@@ -496,7 +497,7 @@ export default function App() {
                 Play again
               </button>
               <button
-                onClick={() => setOpen(false)}
+                onClick={() => setDismissed(true)}
                 className="min-h-11 cursor-pointer touch-manipulation rounded-lg px-5 py-2 text-mist hover:text-foam"
               >
                 View ladder
