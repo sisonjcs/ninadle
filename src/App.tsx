@@ -285,6 +285,25 @@ const Chevron = ({ flipped }: { flipped: boolean }) => (
   </svg>
 );
 
+const RetryIcon = () => (
+  <svg {...ICON}>
+    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+    <path d="M3 3v5h5" />
+  </svg>
+);
+
+const HelpIcon = () => (
+  <svg {...ICON}>
+    <circle cx="12" cy="12" r="10" />
+    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+    <path d="M12 17h.01" />
+  </svg>
+);
+
+// round icon buttons in the top-left; the text label appears on wide desktop windows
+const PILL =
+  "flex min-h-9 min-w-9 cursor-pointer touch-manipulation items-center justify-center gap-2 rounded-full border border-swell px-2 text-[0.85rem] font-bold text-mist transition-colors enabled:hover:bg-deep enabled:hover:text-foam disabled:cursor-default disabled:opacity-40 desk:px-3.5";
+
 export default function App() {
   const [start, setStart] = useState(() => pickStart());
   const [ladder, setLadder] = useState<string[]>([]);
@@ -302,6 +321,14 @@ export default function App() {
       return false;
     }
   });
+  const [helpOpen, setHelpOpen] = useState(() => {
+    try {
+      return localStorage.getItem("ninadle:help-seen") !== "1"; // auto-open on the first visit
+    } catch {
+      return true;
+    }
+  });
+  const [retryOpen, setRetryOpen] = useState(false); // "new puzzle or clear ladder?" choice
   const [showKeys, setShowKeys] = useState(() => {
     try {
       return localStorage.getItem("ninadle:keyboard") !== "hidden";
@@ -341,6 +368,30 @@ export default function App() {
     setTimeout(() => root.classList.remove("theme-fade"), 450);
     setPink((v) => !v);
   };
+
+  const closeHelp = useCallback(() => {
+    setHelpOpen(false);
+    try {
+      localStorage.setItem("ninadle:help-seen", "1");
+    } catch {
+      /* storage unavailable, ignore */
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!helpOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && closeHelp();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [helpOpen, closeHelp]);
+
+  useEffect(() => {
+    if (!retryOpen) return;
+    const onKey = (e: KeyboardEvent) =>
+      e.key === "Escape" && setRetryOpen(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [retryOpen]);
 
   useEffect(() => {
     try {
@@ -392,13 +443,13 @@ export default function App() {
 
   const press = useCallback(
     (key: string) => {
-      if (!playing) return;
+      if (!playing || helpOpen || retryOpen) return;
       if (key === "Enter") submit();
       else if (key === "Backspace") setInput((s) => s.slice(0, -1));
       else if (/^[a-z]$/.test(key))
         setInput((s) => (s.length < 4 ? s + key : s));
     },
-    [playing, submit],
+    [playing, helpOpen, retryOpen, submit],
   );
 
   useEffect(() => {
@@ -421,8 +472,9 @@ export default function App() {
     return m;
   }, [start, shown]);
 
-  const playAgain = () => {
-    setStart(pickStart(start));
+  // stay on the current puzzle and clear the ladder (same start word)
+  const clearLadder = () => {
+    setRetryOpen(false);
     setReady(false);
     setDismissed(false);
     setLadder([]);
@@ -430,6 +482,12 @@ export default function App() {
     setMsg("");
     setRound((r) => r + 1);
     setIntro(true);
+  };
+
+  // a brand-new puzzle
+  const playAgain = () => {
+    setStart(pickStart(start));
+    clearLadder();
   };
 
   const empty = Math.max(0, MAX_GUESSES - shown.length - (playing ? 1 : 0));
@@ -441,15 +499,42 @@ export default function App() {
     >
       <Confetti active={won} />
 
+      <div
+        className="fixed top-[max(12px,env(safe-area-inset-top))] left-[max(12px,env(safe-area-inset-left))] z-20 flex gap-2 motion-safe:animate-drop"
+        onMouseDown={(e) => e.preventDefault()}
+      >
+        <button
+          type="button"
+          onClick={() => setRetryOpen(true)}
+          aria-haspopup="dialog"
+          aria-label="Retry"
+          title="Retry"
+          className={PILL}
+        >
+          <RetryIcon />
+          <span className="hidden desk:inline">Retry</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setHelpOpen(true)}
+          aria-label="How to play"
+          title="How to play"
+          className={PILL}
+        >
+          <HelpIcon />
+          <span className="hidden desk:inline">Help</span>
+        </button>
+      </div>
+
       <button
         type="button"
         role="switch"
         aria-checked={pink}
         onClick={niñafy}
         onMouseDown={(e) => e.preventDefault()}
-        className="fixed top-[max(12px,env(safe-area-inset-top))] right-[max(12px,env(safe-area-inset-right))] z-20 flex min-h-9 cursor-pointer touch-manipulation items-center gap-2.5 rounded-full border border-swell py-1 pr-1.5 pl-3.5 text-[0.85rem] font-bold text-mist transition-colors hover:bg-deep hover:text-foam motion-safe:animate-drop"
+        className="fixed top-[max(12px,env(safe-area-inset-top))] right-[max(12px,env(safe-area-inset-right))] z-20 flex min-h-9 cursor-pointer touch-manipulation items-center gap-2 rounded-full border border-swell py-1 pr-1.5 pl-3 text-[0.8rem] font-bold text-mist transition-colors hover:bg-deep hover:text-foam motion-safe:animate-drop tiny:pl-1.5 desk:pl-3.5 desk:text-[0.85rem]"
       >
-        Niñafy
+        <span className="tiny:sr-only">Niñafy</span>
         <span
           aria-hidden
           className={`flex h-6 w-10 items-center rounded-full p-1 transition-colors ${pink ? "bg-rope" : "bg-swell"}`}
@@ -459,6 +544,133 @@ export default function App() {
           />
         </span>
       </button>
+
+      {helpOpen && (
+        <div
+          className="fixed inset-0 z-30 grid place-items-center bg-sea/80 p-4"
+          onClick={closeHelp}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="help-title"
+            onClick={(e) => e.stopPropagation()}
+            className="max-h-[calc(100dvh-2rem)] w-[min(92vw,400px)] overflow-y-auto rounded-2xl border border-swell bg-deep p-6 text-center shadow-2xl motion-safe:animate-pop"
+          >
+            <h2
+              id="help-title"
+              className="font-display text-[1.7rem] leading-tight font-normal"
+            >
+              How to play
+            </h2>
+            <p className="mt-3 text-[0.95rem] leading-[1.5] text-mist">
+              Climb from the starting word to <b className="text-foam">NIÑA</b>{" "}
+              by changing <b className="text-foam">one letter</b> at a time.
+              Every rung must be a real four-letter word.
+            </p>
+
+            <div
+              className="mx-auto mt-4 flex w-fit flex-col gap-1"
+              style={
+                {
+                  "--tile": "36px",
+                  "--gap": "4px",
+                  "--rail": "0px",
+                } as CSSProperties
+              }
+            >
+              <Row word="zone" locked />
+              <Row word="none" prev="zone" />
+              <Row word="nine" prev="none" />
+              <Row word="nina" prev="nine" target reached />
+            </div>
+            <p className="mt-2 text-[0.8rem] text-mist">
+              The line under a letter marks the one you just changed.
+            </p>
+
+            <ul
+              className="mt-4 flex flex-col gap-2 text-left text-[0.9rem] text-mist"
+              style={{ "--tile": "30px" } as CSSProperties}
+            >
+              {(
+                [
+                  ["n", "hit", "In NIÑA, in this spot"],
+                  ["i", "near", "In NIÑA, but in a different spot"],
+                  ["z", "miss", "Not in NIÑA"],
+                ] as const
+              ).map(([ch, t, label]) => (
+                <li key={t} className="flex items-center gap-3">
+                  <div className={`${TILE} ${TONE[t]} shrink-0`}>{ch}</div>
+                  {label}
+                </li>
+              ))}
+            </ul>
+
+            <p className="mt-4 text-[0.85rem] leading-[1.5] text-mist">
+              You get {MAX_GUESSES} guesses, and the last step into NIÑA is free
+              once you&rsquo;re one letter away. Par is the shortest possible
+              ladder. Retry lets you clear your ladder or switch to a new
+              puzzle.
+            </p>
+
+            <button
+              autoFocus
+              onClick={closeHelp}
+              className="mt-5 min-h-11 w-full cursor-pointer touch-manipulation rounded-lg bg-rope px-5 py-3 font-bold text-sea"
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
+
+      {retryOpen && (
+        <div
+          className="fixed inset-0 z-30 grid place-items-center bg-sea/80 p-4"
+          onClick={() => setRetryOpen(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="retry-title"
+            onClick={(e) => e.stopPropagation()}
+            className="w-[min(92vw,380px)] rounded-2xl border border-swell bg-deep p-6 text-center shadow-2xl motion-safe:animate-pop"
+          >
+            <h2
+              id="retry-title"
+              className="font-display text-[1.7rem] leading-tight font-normal"
+            >
+              Try again?
+            </h2>
+            <p className="mt-3 text-[0.95rem] leading-[1.5] text-mist">
+              Get a new puzzle, or clear your ladder and stay on{" "}
+              <b className="text-foam">{start.toUpperCase()}</b> to{" "}
+              <b className="text-foam">NIÑA</b>.
+            </p>
+            <div className="mt-5 flex flex-col gap-2">
+              <button
+                autoFocus
+                onClick={playAgain}
+                className="min-h-11 cursor-pointer touch-manipulation rounded-lg bg-rope px-5 py-3 font-bold text-sea"
+              >
+                New puzzle
+              </button>
+              <button
+                onClick={clearLadder}
+                className="min-h-11 cursor-pointer touch-manipulation rounded-lg border border-swell px-5 py-3 font-bold text-foam hover:bg-sea/40"
+              >
+                Clear ladder
+              </button>
+              <button
+                onClick={() => setRetryOpen(false)}
+                className="min-h-11 cursor-pointer touch-manipulation rounded-lg px-5 py-2 text-mist hover:text-foam"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {open && (
         <div
@@ -508,7 +720,7 @@ export default function App() {
       )}
       <header
         key={`h${round}`}
-        className="text-center motion-safe:animate-drop land:col-span-2 land:pr-24 land:row-start-1 land:flex land:flex-wrap land:items-center land:justify-center land:gap-4"
+        className="text-center motion-safe:animate-drop land:col-span-2 land:px-24 land:row-start-1 land:flex land:flex-wrap land:items-center land:justify-center land:gap-4"
       >
         <h1 className="font-display text-[length:clamp(1.8rem,7vw,2.4rem)] font-normal tracking-[0.01em] land:text-[1.6rem] desk:text-[2.6rem]">
           Niñadle
