@@ -8,6 +8,7 @@ import {
   type CSSProperties,
 } from "react";
 import { WORDS } from "./words";
+import logo from "./assets/ninadle.png";
 
 const TARGET = "nina";
 const STARTERS = [
@@ -269,6 +270,15 @@ const ICON = {
   className: "size-4 shrink-0",
 } as const;
 
+// easter egg: poke the logo. Every fifth poke sets off the confetti cannons.
+const EGG_LINES = [
+  "¡Hola, niña!",
+  "Wheee!",
+  "Easy, I'm getting dizzy…",
+  "Almost…",
+  "¡Fiesta de NIÑA! 🎉",
+];
+
 const KeyboardIcon = () => (
   <svg {...ICON}>
     <rect x="2" y="5" width="20" height="14" rx="2" />
@@ -329,6 +339,12 @@ export default function App() {
     }
   });
   const [retryOpen, setRetryOpen] = useState(false); // "new puzzle or clear ladder?" choice
+  const [eggClicks, setEggClicks] = useState(0);
+  const [toast, setToast] = useState("");
+  const [party, setParty] = useState(false);
+  const logoRef = useRef<HTMLButtonElement>(null);
+  const toastTimer = useRef(0);
+  const partyTimer = useRef(0);
   const [showKeys, setShowKeys] = useState(() => {
     try {
       return localStorage.getItem("ninadle:keyboard") !== "hidden";
@@ -367,6 +383,29 @@ export default function App() {
     root.classList.add("theme-fade"); // briefly fades colours instead of snapping
     setTimeout(() => root.classList.remove("theme-fade"), 450);
     setPink((v) => !v);
+  };
+
+  const poke = () => {
+    const n = eggClicks + 1;
+    setEggClicks(n);
+    if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches)
+      // an extra pop-and-twirl on top of the logo's constant spin
+      logoRef.current?.animate(
+        [
+          { transform: "scale(1) rotate(0deg)" },
+          { transform: "scale(1.7) rotate(360deg)", offset: 0.4 },
+          { transform: "scale(1) rotate(720deg)" },
+        ],
+        { duration: 900, easing: "cubic-bezier(0.3, 1.3, 0.5, 1)" },
+      );
+    setToast(EGG_LINES[(n - 1) % EGG_LINES.length]);
+    clearTimeout(toastTimer.current);
+    toastTimer.current = window.setTimeout(() => setToast(""), 1800);
+    if (n % EGG_LINES.length === 0) {
+      setParty(true);
+      clearTimeout(partyTimer.current);
+      partyTimer.current = window.setTimeout(() => setParty(false), 1000);
+    }
   };
 
   const closeHelp = useCallback(() => {
@@ -497,7 +536,21 @@ export default function App() {
       className={`${APP_VARS} ${showKeys ? "desk:[--chrome:430px]" : "desk:[--chrome:250px]"} chrome-anim mx-auto flex min-h-dvh max-w-[480px] flex-col items-center gap-3 pt-[max(16px,env(safe-area-inset-top))] pr-[max(14px,env(safe-area-inset-right))] pb-[max(20px,env(safe-area-inset-bottom))] pl-[max(14px,env(safe-area-inset-left))] short:gap-2 tall:max-w-[560px] tall:gap-4 tall:pt-9 desk:max-w-[640px] desk:gap-4 desk:pt-8 land:max-w-[920px] land:grid land:grid-cols-[auto_minmax(0,1fr)] land:items-start land:justify-items-center land:gap-x-7 land:gap-y-2`}
       style={{ "--rows": MAX_GUESSES + 2 } as CSSProperties}
     >
-      <Confetti active={won} />
+      <Confetti active={won || party} />
+
+      {toast && (
+        <div
+          role="status"
+          className="pointer-events-none fixed inset-x-0 top-[5.5rem] z-20 flex justify-center px-4 desk:top-32"
+        >
+          <div
+            key={eggClicks}
+            className="rounded-full border border-swell bg-deep px-4 py-2 text-[0.9rem] font-bold shadow-lg motion-safe:animate-pop"
+          >
+            {toast}
+          </div>
+        </div>
+      )}
 
       <div
         className="fixed top-[max(12px,env(safe-area-inset-top))] left-[max(12px,env(safe-area-inset-left))] z-20 flex gap-2 motion-safe:animate-drop"
@@ -722,7 +775,24 @@ export default function App() {
         key={`h${round}`}
         className="text-center motion-safe:animate-drop land:col-span-2 land:px-24 land:row-start-1 land:flex land:flex-wrap land:items-center land:justify-center land:gap-4"
       >
-        <h1 className="font-display text-[length:clamp(1.8rem,7vw,2.4rem)] font-normal tracking-[0.01em] land:text-[1.6rem] desk:text-[2.6rem]">
+        <h1 className="flex items-center justify-center gap-[0.25em] font-display text-[length:clamp(1.8rem,7vw,2.4rem)] font-normal tracking-[0.01em] land:text-[1.6rem] desk:text-[2.6rem]">
+          {/* decorative easter egg: mouse/touch only, hidden from keyboard and screen readers */}
+          <button
+            ref={logoRef}
+            type="button"
+            tabIndex={-1}
+            aria-hidden
+            onClick={poke}
+            onMouseDown={(e) => e.preventDefault()}
+            className="-m-2 box-content size-[0.9em] shrink-0 cursor-pointer touch-manipulation rounded-full p-2"
+          >
+            <img
+              src={logo}
+              alt=""
+              draggable={false}
+              className="size-full object-contain motion-safe:animate-spin motion-safe:[animation-duration:6s]"
+            />
+          </button>
           Niñadle
         </h1>
         <p className="mx-auto mt-1.5 mb-2.5 max-w-[34ch] text-[length:clamp(0.85rem,3.4vw,0.95rem)] leading-[1.4] text-mist short:mt-1 short:mb-2 land:m-0 land:max-w-none [&_b]:text-foam">
